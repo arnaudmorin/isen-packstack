@@ -6,6 +6,25 @@
 
 ##Configuration Réseaux
 
+Commencer par désactiver Network Manager :
+```
+sudo systemctl stop NetworkManager.service
+sudo systemctl disable NetworkManager.service
+```
+
+Et activer le réseau standard
+```
+sudo systemctl enable network.service 
+sudo systemctl start network.service
+```
+
+Puis le serveur SSH :
+```
+sudo systemctl enable sshd
+sudo systemctl start sshd
+```
+
+
 Notre platforme utilisera deux réseaux :
 
  * Un réseau **management** : 192.168.42.0/24
@@ -22,20 +41,12 @@ Contenu du fichier **/etc/sysconfig/network-scripts/ifcfg-eth0** : (attention à
 ```
 TYPE=Ethernet
 BOOTPROTO=none
-DEFROUTE="yes"
-IPV4_FAILURE_FATAL="no"
-NAME="eth0"
+NAME=eth0
 ONBOOT=yes
 HWADDR=52:54:00:2d:6e:61
-PEERDNS=yes
-PEERROUTES="yes"
 IPADDR=192.168.42.42
 NETMASK=255.255.255.0
-BROADCAST=192.168.42.255
-NETWORK=192.168.42.0
 GATEWAY=192.168.42.1
-USERCTL=no
-PREFIX=24
 ```
 
 ###ETH1
@@ -44,19 +55,18 @@ L'interface ETH1 est configurée **sans** adresse IP et intégrée dans le switc
 
 Contenu du fichier **/etc/sysconfig/network-scripts/ifcfg-eth1** : (attention à changer HWADDR)
 ```
-DEVICE=eth1
 TYPE=OVSPort
-DEVICETYPE=ovs
-OVS_BRIDGE=br-ex
-NM_CONTROLLED=no
 ONBOOT=yes
-IPV6INIT=no
-USERCTL=no
+DEVICETYPE=ovs
+DEVICE=eth1
+OVS_BRIDGE=br-ex
 ```
 
 ##Installation PackStack
 
-Suivre le début du [tutoriel packstack de redhat](https://openstack.redhat.com/Quickstart) en prenant le fichier **answer-allinone.txt**.
+Suivre le début du [tutoriel packstack de redhat](https://openstack.redhat.com/Quickstart) en prenant le fichier **answers-allinone.txt**.
+
+**Ne pas oublier de modifier le fichier answers-allinone.txt pour le faire correspondre aux bonnes interfaces / adresses IP**
 
 Résumé du tuto : 
 
@@ -64,8 +74,25 @@ Résumé du tuto :
 sudo yum update -y
 sudo yum install -y https://rdo.fedorapeople.org/rdo-release.rpm
 sudo yum install -y openstack-packstack
-packstack --answer-file answer-allinone.txt
+packstack --answer-file answers-allinone.txt
 
+```
+
+Vérifier que l'interface eth1 est bien dans le bridge br-ex d'openvswitch :
+```
+sudo ovs-vsctl show
+```
+
+```
+    Bridge br-ex
+        Port br-ex
+            Interface br-ex
+                type: internal
+        Port "qg-74d154d0-27"
+            Interface "qg-74d154d0-27"
+                type: internal
+        Port "eth1"
+            Interface "eth1"
 ```
 
 ##Dashboard
@@ -75,8 +102,13 @@ Essayer de pointer sur [http://192.168.42.42/dashboard](http://192.168.42.42/das
 Le login est **admin**. 
 Le password est fourni dans le fichier **keystonerc_admin**
 
+###Ajouter un utilisateur
+Ajouter un utilisateur dans les projets Demo et Admin, avec les droits admin à chaque fois, ca évitera de se déconnecter/reconnecter à chaque fois.
+
 ###Lancer une instance
 Suivre le [tutoriel packstack de redhat](https://openstack.redhat.com/Running_an_instance)
+
+**Lancer l'instance dans le projet demo**
 
 ####Cas d'une instance cirros
 
@@ -106,7 +138,7 @@ Puis ssh (mot de passe **cubswin:)** ) :
 ssh cirros@10.0.0.4
 ```
 
-Si ping ou ssh ne fonctionne pas, vérifier les règles de sécurités !
+Si ping ou ssh ne fonctionne pas, **vérifier les règles de sécurités !**
 
 ###IP Flottante
 Essayer d'associer une IP flotante à son instance en suivant le [tutoriel packstack de redhat](https://openstack.redhat.com/Floating_IP_range)
